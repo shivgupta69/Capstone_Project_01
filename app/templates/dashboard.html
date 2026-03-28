@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Study Planner{% endblock %}
+
+{% block body %}
+{% set metrics = namespace(total=tasks|length, done=0, progress=0, in_progress=0, todo=0, upcoming=0) %}
+{% for task in tasks %}
+    {% set task_status = task[6] if task|length > 6 and task[6] else 'todo' %}
+    {% if task_status == 'done' %}
+        {% set metrics.done = metrics.done + 1 %}
+    {% elif task_status == 'in-progress' %}
+        {% set metrics.in_progress = metrics.in_progress + 1 %}
+    {% else %}
+        {% set metrics.todo = metrics.todo + 1 %}
+    {% endif %}
+    {% if task|length > 5 and task[5] %}
+        {% set metrics.upcoming = metrics.upcoming + 1 %}
+    {% endif %}
+{% endfor %}
+{% if metrics.total > 0 %}
+    {% set metrics.progress = (metrics.done * 100 // metrics.total) %}
+{% endif %}
+
+<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+    <div>
+        <h2 class="text-2xl font-bold tracking-tight">Dashboard</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Plan smarter, track execution, and hit your study goals.</p>
+    </div>
+    <a href="/schedule" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8.25 3v2.25M15.75 3v2.25M3.75 8.25h16.5M4.5 5.25h15A1.5 1.5 0 0121 6.75v12A1.5 1.5 0 0119.5 20.25h-15A1.5 1.5 0 013 18.75v-12A1.5 1.5 0 014.5 5.25z"/></svg>
+        Open Calendar View
+    </a>
+</div>
+
+<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Tasks</p>
+        <p class="mt-2 text-3xl font-bold">{{ metrics.total }}</p>
+        <p class="mt-1 text-xs text-slate-500">Across all categories</p>
+    </div>
+    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-900/20">
+        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Completed</p>
+        <p class="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-300">{{ metrics.done }}</p>
+        <div class="mt-3 h-2 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+            <div class="h-full rounded-full bg-emerald-500" style="width: {{ metrics.progress }}%;"></div>
+        </div>
+    </div>
+    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20">
+        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">In Progress</p>
+        <p class="mt-2 text-3xl font-bold text-amber-700 dark:text-amber-300">{{ metrics.in_progress }}</p>
+        <p class="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">Active focus items</p>
+    </div>
+    <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900/40 dark:bg-indigo-900/20">
+        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">This Week</p>
+        <p class="mt-2 text-sm font-bold text-indigo-700 dark:text-indigo-300">{{ weekly_analytics.completed_tasks if weekly_analytics else 0 }}/{{ weekly_analytics.due_tasks if weekly_analytics else 0 }} done</p>
+        <p class="mt-1 text-xs text-indigo-700/80 dark:text-indigo-300/80">{{ weekly_analytics.planned_hours if weekly_analytics else 0 }}h planned</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
+    <section class="xl:col-span-8 space-y-6">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-base font-semibold">Create Task</h3>
+                <span class="text-xs text-slate-500">Fast add</span>
+            </div>
+            <form id="taskForm" action="/add" method="post" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6" novalidate>
+                <div class="xl:col-span-2">
+                    <input type="text" name="task" id="taskInput" placeholder="Task name" required maxlength="150" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                    <p id="taskError" class="mt-1 hidden text-xs text-red-600 dark:text-red-400"></p>
+                </div>
+                <div>
+                    <input type="text" name="category" id="categoryInput" placeholder="Category" required maxlength="80" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                    <p id="categoryError" class="mt-1 hidden text-xs text-red-600 dark:text-red-400"></p>
+                </div>
+                <div>
+                    <input type="number" name="duration" id="durationInput" placeholder="Hours" min="1" step="1" required class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                    <p id="durationError" class="mt-1 hidden text-xs text-red-600 dark:text-red-400"></p>
+                </div>
+                <div>
+                    <input type="date" name="due_date" id="dueDateInput" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                </div>
+                <div>
+                    <select name="status" id="statusInput" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                        <option value="todo">To Do</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <button id="addTaskButton" type="submit" class="rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">Add Task</button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <form action="/" method="get" class="grid grid-cols-1 gap-3 md:grid-cols-5">
+                <input type="text" name="search" value="{{ filters.search if filters else '' }}" placeholder="Search tasks" class="md:col-span-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                <select name="category" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                    <option value="">All Categories</option>
+                    {% if category_counts %}
+                        {% for category_item in category_counts %}
+                        <option value="{{ category_item.name }}" {% if filters and filters.category == category_item.name %}selected{% endif %}>{{ category_item.name }} ({{ category_item.count }})</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="" disabled>No categories yet</option>
+                    {% endif %}
+                </select>
+                <select name="status" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                    <option value="">All Statuses</option>
+                    <option value="todo" {% if filters and filters.status == 'todo' %}selected{% endif %}>To Do</option>
+                    <option value="in-progress" {% if filters and filters.status == 'in-progress' %}selected{% endif %}>In Progress</option>
+                    <option value="done" {% if filters and filters.status == 'done' %}selected{% endif %}>Done</option>
+                </select>
+                <select name="due_filter" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary-200 focus:ring dark:border-slate-700 dark:bg-slate-800">
+                    <option value="">Any Due Date</option>
+                    <option value="today" {% if filters and filters.due_filter == 'today' %}selected{% endif %}>Due Today</option>
+                    <option value="this-week" {% if filters and filters.due_filter == 'this-week' %}selected{% endif %}>Due This Week</option>
+                    <option value="overdue" {% if filters and filters.due_filter == 'overdue' %}selected{% endif %}>Overdue</option>
+                </select>
+                <div class="md:col-span-5 flex gap-2">
+                    <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900">Apply</button>
+                    <a href="/" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">Reset</a>
+                </div>
+            </form>
+        </div>
+
+        <section>
+            <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-lg font-semibold">Today's Tasks</h3>
+                <span class="text-xs text-slate-500">Card view</span>
+            </div>
+
+            {% if tasks %}
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {% for task in tasks %}
+                {% include "components/task_card.html" %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+                <p class="text-base font-semibold">No tasks yet</p>
+                <p class="mt-1 text-sm text-slate-500">Create your first task to populate the dashboard.</p>
+            </div>
+            {% endif %}
+        </section>
+    </section>
+
+    <aside class="xl:col-span-4 space-y-6">
+        <section id="progress-overview" class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <h3 class="text-base font-semibold">Progress Overview</h3>
+            <p class="mt-1 text-xs text-slate-500">Track completion by workflow state.</p>
+
+            <div class="mt-4 space-y-3">
+                {% set label = "Done" %}
+                {% set value = metrics.done %}
+                {% set percent = (metrics.done * 100 // metrics.total) if metrics.total else 0 %}
+                {% set color_class = "bg-emerald-500" %}
+                {% include "components/progress_bar.html" %}
+
+                {% set label = "In Progress" %}
+                {% set value = metrics.in_progress %}
+                {% set percent = (metrics.in_progress * 100 // metrics.total) if metrics.total else 0 %}
+                {% set color_class = "bg-amber-500" %}
+                {% include "components/progress_bar.html" %}
+
+                {% set label = "To Do" %}
+                {% set value = metrics.todo %}
+                {% set percent = (metrics.todo * 100 // metrics.total) if metrics.total else 0 %}
+                {% set color_class = "bg-slate-400" %}
+                {% include "components/progress_bar.html" %}
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-base font-semibold">Upcoming Deadlines</h3>
+                <span class="text-xs text-slate-500">{{ metrics.upcoming }}</span>
+            </div>
+
+            <div class="space-y-2">
+                {% set has_upcoming = namespace(value=false) %}
+                {% for task in tasks %}
+                    {% if task|length > 5 and task[5] %}
+                        {% set has_upcoming.value = true %}
+                        <div class="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
+                            <p class="font-semibold">{{ task[2] }}</p>
+                            <p class="text-xs text-slate-500">{{ task[5] }} • {{ task[3] }}</p>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                {% if not has_upcoming.value %}
+                <div class="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">No upcoming deadlines yet.</div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-base font-semibold">Analytics</h3>
+                <span class="text-xs text-slate-500">Category split</span>
+            </div>
+            {% if labels %}
+            <div class="h-64"><canvas id="studyChart"></canvas></div>
+            {% else %}
+            <div class="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">No data yet. Add tasks to see category analytics.</div>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function() {
+        const taskForm = document.getElementById("taskForm");
+        const addTaskButton = document.getElementById("addTaskButton");
+        const taskInput = document.getElementById("taskInput");
+        const categoryInput = document.getElementById("categoryInput");
+        const durationInput = document.getElementById("durationInput");
+
+        function showFieldError(input, errorEl, message) {
+            if (message) {
+                input.classList.add("border-red-400", "focus:border-red-500", "focus:ring-red-500/30");
+                errorEl.textContent = message;
+                errorEl.classList.remove("hidden");
+                return false;
+            }
+
+            input.classList.remove("border-red-400", "focus:border-red-500", "focus:ring-red-500/30");
+            errorEl.textContent = "";
+            errorEl.classList.add("hidden");
+            return true;
+        }
+
+        function validateTask() {
+            return showFieldError(taskInput, document.getElementById("taskError"), taskInput.value.trim() ? "" : "Task name is required.");
+        }
+
+        function validateCategory() {
+            return showFieldError(categoryInput, document.getElementById("categoryError"), categoryInput.value.trim() ? "" : "Category is required.");
+        }
+
+        function validateDuration() {
+            const durationValue = Number(durationInput.value);
+            const invalidDuration = !Number.isInteger(durationValue) || durationValue < 1;
+            return showFieldError(durationInput, document.getElementById("durationError"), invalidDuration ? "Duration must be a whole number of at least 1." : "");
+        }
+
+        taskInput?.addEventListener("input", validateTask);
+        categoryInput?.addEventListener("input", validateCategory);
+        durationInput?.addEventListener("input", validateDuration);
+
+        let taskFormSubmitting = false;
+        taskForm?.addEventListener("submit", function(event) {
+            const valid = validateTask() && validateCategory() && validateDuration();
+            if (!valid || taskFormSubmitting) {
+                event.preventDefault();
+                return;
+            }
+
+            taskFormSubmitting = true;
+            addTaskButton.disabled = true;
+            addTaskButton.classList.add("opacity-60", "cursor-not-allowed");
+            addTaskButton.textContent = "Adding...";
+        });
+
+        document.querySelectorAll(".delete-task-btn").forEach((button) => {
+            button.addEventListener("click", function(event) {
+                const taskName = this.dataset.taskName || "this task";
+                if (!window.confirm(`Delete "${taskName}"?`)) {
+                    event.preventDefault();
+                    return;
+                }
+                if (this.dataset.pending === "1") {
+                    event.preventDefault();
+                    return;
+                }
+                this.dataset.pending = "1";
+                this.disabled = true;
+                this.textContent = "Deleting...";
+            });
+        });
+
+        document.querySelectorAll(".task-status-select").forEach((select) => {
+            select.addEventListener("change", function() {
+                if (this.dataset.pending === "1" || this.value === this.dataset.initialValue) {
+                    return;
+                }
+                this.dataset.pending = "1";
+                this.disabled = true;
+                this.form?.submit();
+            });
+        });
+    })();
+</script>
+
+{% if labels %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function () {
+        const labels = {{ labels|tojson }};
+        const values = {{ data|tojson }};
+        const ctx = document.getElementById("studyChart");
+        if (!ctx) return;
+
+        const isDark = document.documentElement.classList.contains("dark");
+        const textColor = isDark ? "#94a3b8" : "#64748b";
+        const gridColor = isDark ? "#1e293b" : "#e2e8f0";
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Study Hours",
+                    data: values,
+                    backgroundColor: isDark ? "rgba(96, 165, 250, 0.8)" : "rgba(37, 99, 235, 0.8)",
+                    borderRadius: 10,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } },
+                    x: { ticks: { color: textColor }, grid: { display: false } },
+                },
+            },
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

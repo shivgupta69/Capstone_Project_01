@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Study Planner{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+                    },
+                    colors: {
+                        primary: {
+                            50: "#eff6ff",
+                            100: "#dbeafe",
+                            500: "#3b82f6",
+                            600: "#2563eb",
+                            700: "#1d4ed8",
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+
+    <style>
+        body {
+            font-family: "Inter", system-ui, -apple-system, sans-serif;
+        }
+
+        .app-scrollbar::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .app-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+
+        .dark .app-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 app-scrollbar">
+    {% if session.user_id %}
+    <div class="min-h-screen">
+        <div id="sidebarBackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/50 lg:hidden"></div>
+
+        {% include "components/sidebar.html" %}
+
+        <div class="lg:pl-72">
+            {% include "components/navbar.html" %}
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div id="toastContainer" class="fixed right-4 top-20 z-50 w-[calc(100%-2rem)] max-w-sm space-y-2">
+                {% for category, message in messages %}
+                <div class="toast rounded-xl border px-4 py-3 text-sm font-medium shadow-lg {% if category == 'error' %}border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300{% else %}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <main class="px-4 py-6 sm:px-6 lg:px-8">
+                {% block body %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% else %}
+    <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+        {% include "components/navbar.html" %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mx-auto mt-4 w-full max-w-xl px-4">
+            {% for category, message in messages %}
+            <div class="mb-2 rounded-lg border px-3 py-2 text-sm {% if category == 'error' %}border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300{% else %}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+            {% block public_body %}
+                {{ self.body() }}
+            {% endblock %}
+        </main>
+    </div>
+    {% endif %}
+
+    <script>
+        (function () {
+            const html = document.documentElement;
+            const toggle = document.getElementById("darkModeToggle");
+            const savedTheme = localStorage.getItem("theme");
+            const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+            if (savedTheme === "dark" || (!savedTheme && systemPrefersDark)) {
+                html.classList.add("dark");
+            }
+
+            toggle?.addEventListener("click", () => {
+                html.classList.toggle("dark");
+                localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
+            });
+        })();
+
+        (function () {
+            const sidebar = document.getElementById("sidebar");
+            const backdrop = document.getElementById("sidebarBackdrop");
+            const open = document.getElementById("openSidebar");
+            const close = document.getElementById("closeSidebar");
+
+            function openMenu() {
+                sidebar?.classList.remove("-translate-x-full");
+                backdrop?.classList.remove("hidden");
+            }
+
+            function closeMenu() {
+                sidebar?.classList.add("-translate-x-full");
+                backdrop?.classList.add("hidden");
+            }
+
+            open?.addEventListener("click", openMenu);
+            close?.addEventListener("click", closeMenu);
+            backdrop?.addEventListener("click", closeMenu);
+        })();
+
+        (function () {
+            document.querySelectorAll(".toast").forEach((toast) => {
+                setTimeout(() => {
+                    toast.classList.add("opacity-0", "translate-y-1", "transition");
+                    setTimeout(() => toast.remove(), 300);
+                }, 2800);
+            });
+        })();
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

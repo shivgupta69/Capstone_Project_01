@@ -1,0 +1,49 @@
+{% set task_status = task[6] if task|length > 6 and task[6] else 'todo' %}
+{% set priority = 'Low' %}
+{% set priority_classes = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/40' %}
+{% if task[4] >= 4 %}
+    {% set priority = 'High' %}
+    {% set priority_classes = 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40' %}
+{% elif task[4] >= 2 %}
+    {% set priority = 'Medium' %}
+    {% set priority_classes = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/40' %}
+{% endif %}
+
+<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <h4 class="break-words text-base font-semibold">{{ task[2] }}</h4>
+            <p class="mt-1 text-xs text-slate-500">Category: {{ task[3] }}</p>
+        </div>
+        <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold {{ priority_classes }}">{{ priority }}</span>
+    </div>
+
+    <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
+        <div class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
+            <p class="text-slate-500">Deadline</p>
+            <p class="mt-1 font-semibold">{{ task[5] if task|length > 5 and task[5] else 'Not set' }}</p>
+        </div>
+        <div class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
+            <p class="text-slate-500">Status</p>
+            <p class="mt-1 font-semibold">{{ task_status|replace('-', ' ')|title }}</p>
+        </div>
+    </div>
+
+    <div class="mt-3 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
+        <div class="h-full rounded-full {% if task_status == 'done' %}bg-emerald-500{% elif task_status == 'in-progress' %}bg-amber-500{% else %}bg-slate-400{% endif %}" style="width: {% if task_status == 'done' %}100{% elif task_status == 'in-progress' %}60{% else %}20{% endif %}%"></div>
+    </div>
+
+    <div class="mt-4 flex items-center gap-2">
+        <form action="/task/{{ task[0] }}/status" method="post" class="flex-1">
+            <select name="status" class="task-status-select w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs dark:border-slate-700 dark:bg-slate-800" data-initial-value="{{ task_status }}">
+                <option value="todo" {% if task_status == 'todo' %}selected{% endif %}>To Do</option>
+                <option value="in-progress" {% if task_status == 'in-progress' %}selected{% endif %}>In Progress</option>
+                <option value="done" {% if task_status == 'done' %}selected{% endif %}>Done</option>
+            </select>
+        </form>
+        <a href="/schedule" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">Calendar</a>
+        <form action="/delete/{{ task[0] }}" method="post" class="inline">
+            <button type="submit" class="delete-task-btn rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700" data-task-name="{{ task[2] }}">Delete</button>
+        </form>
+    </div>
+</article>
