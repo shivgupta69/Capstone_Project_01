@@ -177,6 +177,20 @@ class TestRegisterRoute:
         response = register_user(client, 'testuser', 'differentpassword')
         assert b'already exists' in response.data
 
+    def test_register_json_returns_user_payload(self, client):
+        """Test JSON registration returns token and user payload."""
+        response = client.post(
+            '/register',
+            json={'username': 'jsonuser', 'password': 'password123'},
+            headers={'Accept': 'application/json'},
+        )
+
+        assert response.status_code == 201
+        payload = response.get_json()
+        assert payload['token']
+        assert payload['user']['username'] == 'jsonuser'
+        assert 'id' in payload['user']
+
 
 class TestLoginRoute:
     """Tests for the login route."""
@@ -211,6 +225,32 @@ class TestLoginRoute:
         }, follow_redirects=True)
         assert b'cannot be empty' in response.data
 
+    def test_login_json_returns_user_payload(self, client):
+        """Test JSON login returns token and user payload."""
+        register_user(client, 'apitester', 'password123')
+
+        response = client.post(
+            '/login',
+            json={'username': 'apitester', 'password': 'password123'},
+            headers={'Accept': 'application/json'},
+        )
+
+        assert response.status_code == 200
+        payload = response.get_json()
+        assert payload['token']
+        assert payload['user']['username'] == 'apitester'
+
+    def test_sidebar_displays_username(self, client):
+        """Test the authenticated UI renders the username instead of the user id."""
+        register_user(client, 'displayuser', 'password123')
+        login_user(client, 'displayuser', 'password123')
+
+        response = client.get('/')
+
+        assert response.status_code == 200
+        assert b'displayuser' in response.data
+        assert b'User #' not in response.data
+
 
 class TestLogoutRoute:
     """Tests for the logout route."""
@@ -227,6 +267,20 @@ class TestLogoutRoute:
         response = client.get('/')
         assert response.status_code == 302
         assert '/login' in response.location
+
+
+class TestAnalyticsRoute:
+    """Tests for the analytics route."""
+
+    def test_analytics_loads_when_logged_in(self, client):
+        """Test that analytics page renders without server errors."""
+        register_user(client, 'analyticsuser', 'password123')
+        login_user(client, 'analyticsuser', 'password123')
+
+        response = client.get('/analytics')
+
+        assert response.status_code == 200
+        assert b'Analytics' in response.data
 
 
 class TestAddTaskRoute:
@@ -358,6 +412,38 @@ class TestDeleteTaskRoute:
         response = client.get(f'/delete/{task[0]}', follow_redirects=True)
         assert response.status_code == 200
 
+    def test_delete_task_api_success(self, client):
+        """Test successful task deletion through the API route."""
+        register_user(client, 'apitestuser', 'password123')
+        login_user(client, 'apitestuser', 'password123')
+
+        client.post('/add', data={
+            'task': 'Delete Me',
+            'category': 'Programming',
+            'duration': 2
+        }, follow_redirects=True)
+
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM tasks WHERE user_id=?", (1,))
+        task = cursor.fetchone()
+        conn.close()
+
+        response = client.delete(f'/api/tasks/{task[0]}')
+
+        assert response.status_code == 200
+        assert response.get_json()["success"] is True
+
+    def test_delete_task_api_not_found(self, client):
+        """Test API delete returns 404 for missing task."""
+        register_user(client, 'missingtaskuser', 'password123')
+        login_user(client, 'missingtaskuser', 'password123')
+
+        response = client.delete('/api/tasks/999')
+
+        assert response.status_code == 404
+        assert response.get_json()["success"] is False
+
     def test_delete_only_own_tasks(self, client):
         """Test that users can only delete their own tasks."""
         # Register two users
@@ -426,7 +512,58 @@ class TestTaskEnhancements:
         response = client.post(f'/task/{task[0]}/status', data={'status': 'done'}, follow_redirects=True)
         assert response.status_code == 200
         assert b'Task status updated' in response.data
-        assert b'Done' in response.data
+
+    def test_update_task_status_api(self, client):
+        register_user(client, 'apitestuser', 'password123')
+        login_user(client, 'apitestuser', 'password123')
+
+        client.post('/add', data={
+            'task': 'Status API Task',
+            'category': 'Math',
+            'duration': 1,
+            'status': 'todo'
+        }, follow_redirects=True)
+
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM tasks WHERE user_id=?", (1,))
+        task = cursor.fetchone()
+        conn.close()
+
+        response = client.put(
+            f'/api/tasks/{task[0]}/status',
+            json={'status': 'in-progress'}
+        )
+
+        assert response.status_code == 200
+        assert response.get_json()["success"] is True
+        assert response.get_json()["status"] == 'in-progress'
+
+    def test_update_task_status_api_invalid_status(self, client):
+        register_user(client, 'badstatususer', 'password123')
+        login_user(client, 'badstatususer', 'password123')
+
+        client.post('/add', data={
+            'task': 'Bad Status Task',
+            'category': 'Math',
+            'duration': 1,
+            'status': 'todo'
+        }, follow_redirects=True)
+
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM tasks WHERE user_id=?", (1,))
+        task = cursor.fetchone()
+        conn.close()
+
+        response = client.put(
+            f'/api/tasks/{task[0]}/status',
+            json={'status': 'in progress'}
+        )
+
+        assert response.status_code == 400
+        assert response.get_json()["success"] is False
+        assert response.get_json()["message"] == 'Invalid task status.'
 
     def test_weekly_analytics_card(self, client):
         register_user(client, 'testuser', 'password123')

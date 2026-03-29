@@ -4,7 +4,7 @@ from app.utils.db import get_db
 def fetch_tasks_by_user_id(user_id):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tasks WHERE user_id=?", (user_id,))
+    cursor.execute("SELECT * FROM tasks WHERE user_id=? ORDER BY id DESC", (user_id,))
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -163,8 +163,10 @@ def insert_task(
             (user_id, task_name, category, duration),
         )
 
+    task_id = cursor.lastrowid
     conn.commit()
     conn.close()
+    return task_id
 
 
 def delete_task_for_user(task_id, user_id):
@@ -218,7 +220,7 @@ def fetch_weekly_analytics(user_id):
             COUNT(*)
         FROM tasks
         WHERE user_id=?
-          AND due_date BETWEEN date('now', 'weekday 1', '-7 days') AND date('now', 'weekday 0')
+          AND due_date BETWEEN date('now', 'localtime', '-6 days') AND date('now', 'localtime')
         """,
         (user_id,),
     )

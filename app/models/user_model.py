@@ -12,3 +12,6 @@ class User:
         if not row:
             return None
         return cls(id=row[0], username=row[1], password=row[2])
+
+    def to_public_dict(self):
+        return {"id": self.id, "username": self.username}

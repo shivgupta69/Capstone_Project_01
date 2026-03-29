@@ -24,6 +24,25 @@ def _is_valid_id(value):
     return isinstance(value, int) and value > 0
 
 
+def serialize_task_row(row):
+    task = Task.from_row(row)
+    if not task:
+        return None
+
+    return {
+        "id": task.id,
+        "_id": task.id,
+        "user_id": task.user_id,
+        "task_name": task.task_name,
+        "category": task.category,
+        "duration": task.duration,
+        "due_date": task.due_date,
+        "status": task.status,
+        "estimated_hours": task.estimated_hours,
+        "scheduled_date": task.scheduled_date,
+    }
+
+
 def get_user_tasks(user_id):
     if not _is_valid_id(user_id):
         return []
@@ -157,23 +176,23 @@ def create_task_with_details(
     status = (status or "todo").strip()
 
     if not task_name or not category:
-        return False, "Task name and category cannot be empty.", "error"
+        return False, "Task name and category cannot be empty.", "error", None
 
     if status not in VALID_TASK_STATUSES:
-        return False, "Invalid task status.", "error"
+        return False, "Invalid task status.", "error", None
 
     try:
         duration = int(duration_value)
         if duration < 1:
             raise ValueError
     except (TypeError, ValueError):
-        return False, "Duration must be a whole number of at least 1.", "error"
+        return False, "Duration must be a whole number of at least 1.", "error", None
 
     if not _is_valid_id(user_id):
-        return False, "Invalid user context.", "error"
+        return False, "Invalid user context.", "error", None
 
     try:
-        insert_task(
+        task_id = insert_task(
             user_id=user_id,
             task_name=task_name,
             category=category,
@@ -185,45 +204,50 @@ def create_task_with_details(
         )
         track_completion_delta(user_id, "todo", status, duration)
         schedule_user_tasks(user_id)
+        created_task = fetch_task_by_id_for_user(task_id, user_id)
     except sqlite3.Error:
-        return False, "Unable to add task right now. Please try again.", "error"
+        return False, "Unable to add task right now. Please try again.", "error", None
     except Exception:
-        return False, "Unable to add task right now. Please try again.", "error"
+        return False, "Unable to add task right now. Please try again.", "error", None
 
-    return True, "Task added", "success"
+    return True, "Task added", "success", serialize_task_row(created_task)
 
 
 def delete_task(task_id, user_id):
     if not _is_valid_id(task_id) or not _is_valid_id(user_id):
-        return False, "Task not found or already removed.", "error"
+        return False, "Task not found or already removed.", "error", None
 
     try:
+        existing_task = fetch_task_by_id_for_user(task_id, user_id)
+        if not existing_task:
+            return False, "Task not found or already removed.", "error", None
+
         deleted_count = delete_task_for_user(task_id, user_id)
         if deleted_count:
             schedule_user_tasks(user_id)
     except sqlite3.Error:
-        return False, "Unable to delete task right now. Please try again.", "error"
+        return False, "Unable to delete task right now. Please try again.", "error", None
     except Exception:
-        return False, "Unable to delete task right now. Please try again.", "error"
+        return False, "Unable to delete task right now. Please try again.", "error", None
 
     if deleted_count:
-        return True, "Task deleted", "success"
+        return True, "Task deleted", "success", serialize_task_row(existing_task)
 
-    return False, "Task not found or already removed.", "error"
+    return False, "Task not found or already removed.", "error", None
 
 
 def update_task_status(task_id, user_id, status):
     status = (status or "").strip()
     if status not in VALID_TASK_STATUSES:
-        return False, "Invalid task status.", "error"
+        return False, "Invalid task status.", "error", None
 
     if not _is_valid_id(task_id) or not _is_valid_id(user_id):
-        return False, "Task not found or already removed.", "error"
+        return False, "Task not found or already removed.", "error", None
 
     try:
         existing_task = fetch_task_by_id_for_user(task_id, user_id)
         if not existing_task:
-            return False, "Task not found or already removed.", "error"
+            return False, "Task not found or already removed.", "error", None
 
         previous_status = existing_task[6] if len(existing_task) > 6 and existing_task[6] else "todo"
         duration = existing_task[4] if len(existing_task) > 4 else 0
@@ -232,15 +256,16 @@ def update_task_status(task_id, user_id, status):
         if updated_count:
             track_completion_delta(user_id, previous_status, status, duration)
             schedule_user_tasks(user_id)
+            updated_task = fetch_task_by_id_for_user(task_id, user_id)
     except sqlite3.Error:
-        return False, "Unable to update task status right now. Please try again.", "error"
+        return False, "Unable to update task status right now. Please try again.", "error", None
     except Exception:
-        return False, "Unable to update task status right now. Please try again.", "error"
+        return False, "Unable to update task status right now. Please try again.", "error", None
 
     if updated_count:
-        return True, "Task status updated", "success"
+        return True, "Task status updated", "success", serialize_task_row(updated_task)
 
-    return False, "Task not found or already removed.", "error"
+    return False, "Task not found or already removed.", "error", None
 
 
 def get_weekly_analytics(user_id):

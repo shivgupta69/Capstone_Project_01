@@ -22,4 +22,4 @@ fi
 
 python init_db.py
 echo "Starting app on http://localhost:$PORT"
-exec gunicorn -c gunicorn.conf.py run:app
+exec python -m gunicorn -c gunicorn.conf.py run:app

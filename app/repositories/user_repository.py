@@ -23,6 +23,14 @@ def fetch_user_by_username(username):
     return row
 
 
+def fetch_user_by_id(user_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+
 def is_duplicate_username_error(exc):
     return isinstance(exc, sqlite3.IntegrityError)
-
