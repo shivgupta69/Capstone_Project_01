@@ -20,6 +20,6 @@ else
   fi
 fi
 
-python backend/scripts/init_db.py
+python -m backend.scripts.init_db
 echo "Starting app on http://localhost:$PORT"
 exec python -m gunicorn -c deployment/gunicorn.conf.py backend.run:app

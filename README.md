@@ -1,22 +1,22 @@
 # AI Study Planner
 
-AI Study Planner is a Flask web application for managing study tasks, generating a daily study schedule, and tracking progress analytics. The repository is organized into clear layers for backend logic, frontend UI, and deployment assets so it is easier to run locally, present on GitHub, and extend later.
+AI Study Planner is a Flask web application for managing study tasks, generating a daily study plan, and tracking study progress through a simple analytics dashboard. The project is organized into separate `backend`, `frontend`, and `deployment` layers so it is easier to understand, run locally, and present on GitHub.
 
-## Highlights
+## Features
 
-- User registration and login with password hashing
-- Task creation, filtering, deletion, and status updates
-- Daily study schedule view
-- Analytics dashboard for study hours and completed tasks
-- JSON endpoints alongside server-rendered pages
-- Docker and Nginx-ready deployment setup
+- Secure user registration and login
+- Task creation, deletion, filtering, and status updates
+- Study schedule generation based on current tasks
+- Analytics dashboard for completed work and study hours
+- Server-rendered UI plus JSON endpoints for future frontend expansion
+- Docker, Gunicorn, and Nginx-ready deployment setup
 
 ## Tech Stack
 
 - Python 3.11+
 - Flask
 - SQLite
-- Jinja2 templates
+- Jinja2
 - Gunicorn
 - Docker
 - pytest
@@ -78,6 +78,19 @@ Make sure these are installed before running the project:
 - `venv`
 - Docker and Docker Compose, if you want containerized setup
 
+## Quick Start
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+cp backend/.env.example backend/.env
+python backend/scripts/init_db.py
+python backend/run.py
+```
+
+Open `http://localhost:5000` in your browser.
+
 ## Local Setup
 
 ### 1. Clone the repository
@@ -130,7 +143,7 @@ Option A: run the Flask app directly
 python backend/run.py
 ```
 
-Option B: run with the production-style startup script
+Option B: run with the deployment startup script
 
 ```bash
 bash deployment/scripts/start_backend.sh
@@ -167,6 +180,12 @@ Run the backend test suite with:
 pytest backend/tests -q
 ```
 
+Current verified result:
+
+```text
+40 passed
+```
+
 ## Docker Setup
 
 ### Build the app image
@@ -191,6 +210,30 @@ Available endpoints after Compose startup:
 
 - Flask app: `http://localhost:5000`
 - Nginx reverse proxy: `http://localhost:8080`
+
+## Deployment
+
+The repository already includes deployment-ready files:
+
+- `deployment/Dockerfile`
+- `deployment/docker-compose.yml`
+- `deployment/gunicorn.conf.py`
+- `deployment/nginx/default.conf`
+- `deployment/render.yaml`
+- `deployment/railway.toml`
+- `deployment/Procfile`
+
+Manual production-style startup:
+
+```bash
+bash deployment/scripts/start_backend.sh
+```
+
+Direct Gunicorn startup:
+
+```bash
+python -m gunicorn -c deployment/gunicorn.conf.py backend.run:app
+```
 
 ## Application Routes
 
@@ -224,7 +267,7 @@ Available endpoints after Compose startup:
 | `GET` | `/schedule` | View generated study schedule |
 | `GET` | `/analytics` | View analytics dashboard |
 
-## How The App Works
+## How It Works
 
 1. Users register and log in through the Flask auth routes.
 2. Tasks are stored in SQLite and loaded through the repository layer.
@@ -233,7 +276,7 @@ Available endpoints after Compose startup:
 
 ## Screenshots
 
-Add project screenshots here before publishing on GitHub:
+Add screenshots here before publishing publicly on GitHub:
 
 - Dashboard screenshot
 - Schedule screenshot
@@ -263,6 +306,12 @@ If the local DB gets corrupted or you want a clean start, remove the SQLite file
 python backend/scripts/init_db.py
 ```
 
+You can also use:
+
+```bash
+python -m backend.scripts.init_db
+```
+
 ### Missing dependencies
 
 Make sure your virtual environment is active, then reinstall:
@@ -270,14 +319,6 @@ Make sure your virtual environment is active, then reinstall:
 ```bash
 pip install -r backend/requirements.txt
 ```
-
-## Deployment Notes
-
-- `deployment/Dockerfile` builds the production image
-- `deployment/gunicorn.conf.py` contains Gunicorn runtime settings
-- `deployment/docker-compose.yml` starts Flask plus Nginx
-- `deployment/render.yaml` and `deployment/railway.toml` support cloud deployment setups
-- `deployment/Procfile` is included for Procfile-based platforms
 
 ## Future Improvements
 
