@@ -7,6 +7,7 @@ from backend.app.repositories.task_repository import (
     fetch_tasks_by_user_id,
     update_task_schedule_fields,
 )
+from backend.app.utils.timezone import get_ist_now, get_ist_today, make_ist_datetime
 
 DEFAULT_DAY_START_HOUR = 9
 DEFAULT_DAILY_AVAILABLE_HOURS = 4
@@ -56,21 +57,24 @@ def _task_priority_score(task_row, today):
 def generate_schedule(tasks):
     """Build the visual day timeline used by the schedule page."""
     schedule = []
-    current_time = DEFAULT_DAY_START_HOUR
+    current_time = make_ist_datetime(get_ist_now().date(), DEFAULT_DAY_START_HOUR)
 
     sorted_tasks = sorted(tasks, key=lambda task: task[4], reverse=True)
 
     for task in sorted_tasks:
-        duration = task[4]
+        duration = float(task[4])
+        start_time = current_time
+        end_time = start_time + timedelta(hours=duration)
         schedule.append(
             {
                 "task": task[2],
                 "category": task[3],
-                "start": current_time,
-                "end": current_time + duration,
+                "start_time": start_time,
+                "end_time": end_time,
+                "duration_hours": duration,
             }
         )
-        current_time += duration
+        current_time = end_time
 
     return schedule
 
@@ -80,7 +84,7 @@ def build_study_schedule(tasks, daily_available_hours=DEFAULT_DAILY_AVAILABLE_HO
     if daily_available_hours <= 0:
         daily_available_hours = DEFAULT_DAILY_AVAILABLE_HOURS
 
-    today = date.today()
+    today = get_ist_today()
     pending_tasks = []
 
     for row in tasks:

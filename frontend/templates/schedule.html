@@ -9,6 +9,7 @@
     <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Today's Schedule</h1>
         <p class="mt-1 text-sm text-slate-500">Your planned study sessions laid out in a clean timeline.</p>
+        <p class="mt-2 text-xs font-medium uppercase tracking-[0.15em] text-slate-400">All times in IST ({{ timezone_label }})</p>
     </div>
     {{ button(
         label="Back to Dashboard",
@@ -36,12 +37,12 @@
 
                         <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-3">
                             <div class="text-center">
-                                <p class="text-base font-bold leading-none text-slate-900">{{ item.start }}</p>
+                                <p class="text-base font-bold leading-none text-slate-900">{{ item.start_time.strftime("%I:%M %p") }}</p>
                                 <p class="mt-1 text-xs text-slate-400">start</p>
                             </div>
                             <span class="text-slate-300">→</span>
                             <div class="text-center">
-                                <p class="text-base font-bold leading-none text-slate-900">{{ item.end }}</p>
+                                <p class="text-base font-bold leading-none text-slate-900">{{ item.end_time.strftime("%I:%M %p") }}</p>
                                 <p class="mt-1 text-xs text-slate-400">end</p>
                             </div>
                         </div>
@@ -69,7 +70,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             <span class="text-sm font-bold text-indigo-700">
-                                {{ item.end - item.start }}h
+                                {{ item.duration_hours|round(2) }}h
                             </span>
                         </div>
                     </div>
@@ -98,7 +99,7 @@
             <p class="mt-1 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
                 {% set total = namespace(value=0) %}
                 {% for item in schedule %}
-                    {% set total.value = total.value + (item.end - item.start) %}
+                    {% set total.value = total.value + item.duration_hours %}
                 {% endfor %}
                 {{ total.value }}h
             </p>

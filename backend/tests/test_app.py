@@ -6,6 +6,7 @@ import pytest
 
 from backend.app import create_app
 from backend.app.services.schedule_service import generate_schedule
+from backend.app.utils.timezone import IST
 from backend.app.utils.db import get_db, init_db
 
 
@@ -78,8 +79,11 @@ class TestGenerateSchedule:
         result = generate_schedule(tasks)
         assert len(result) == 1
         assert result[0]['task'] == 'Study Math'
-        assert result[0]['start'] == 9
-        assert result[0]['end'] == 11
+        assert result[0]['start_time'].hour == 9
+        assert result[0]['start_time'].minute == 0
+        assert result[0]['start_time'].tzinfo.zone == IST.zone
+        assert result[0]['end_time'].hour == 11
+        assert result[0]['end_time'].minute == 0
 
     def test_multiple_tasks_sorted_by_priority(self):
         """Test that tasks are sorted by priority (duration)."""
@@ -103,10 +107,12 @@ class TestGenerateSchedule:
         ]
         result = generate_schedule(tasks)
         # Tasks are sorted by duration descending, so Task 2 (duration 3) comes first
-        assert result[0]['start'] == 9
-        assert result[0]['end'] == 12
-        assert result[1]['start'] == 12
-        assert result[1]['end'] == 14
+        assert result[0]['start_time'].hour == 9
+        assert result[0]['end_time'].hour == 12
+        assert result[1]['start_time'].hour == 12
+        assert result[1]['end_time'].hour == 14
+        assert result[0]['duration_hours'] == 3
+        assert result[1]['duration_hours'] == 2
 
 
 class TestIndexRoute:
@@ -581,6 +587,9 @@ class TestScheduleRoute:
 
         response = client.get('/schedule')
         assert response.status_code == 200
+        assert b'09:00 AM' in response.data
+        assert b'11:00 AM' in response.data
+        assert b'All times in IST (Asia/Kolkata)' in response.data
 
 
 if __name__ == '__main__':
